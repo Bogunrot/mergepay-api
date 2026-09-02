@@ -78,7 +78,6 @@ model GroupMember {
   @@index([groupId])
   @@map("group_members")
 }
-
 model Expense {
   id          String   @id @default(cuid())
   groupId     String   @map("group_id")
