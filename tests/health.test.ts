@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 
 const h = vi.hoisted(() => ({
   queryRaw: vi.fn(),
@@ -8,11 +8,14 @@ const h = vi.hoisted(() => ({
 }));
 
 vi.mock("../src/db", () => ({
-  prisma: { $queryRaw: h.queryRaw, $queryRawUnsafe: h.queryRawUnsafe },
+  prisma: {
+    $queryRaw: h.queryRaw,
+    $queryRawUnsafe: h.queryRawUnsafe,
+  },
 }));
 
 vi.mock("../src/services/network", () => ({
-  getFeeStats: h.feeStats,
+  getFeeStats: (...args: unknown[]) => h.feeStats(...args),
 }));
 
 import { buildApp } from "../src/app";
