@@ -3,6 +3,7 @@ import fp from "fastify-plugin";
 import { ZodError } from "zod";
 import { AppError } from "../lib/errors";
 import { toRequestLimitError } from "../lib/request-limits";
+import { TimeoutError, TransportError, toProviderError } from "../services/timeout";
 
 export default fp(async function errorHandlerPlugin(app: FastifyInstance) {
   app.setErrorHandler((err: Error, req: FastifyRequest, reply: FastifyReply) => {
@@ -66,6 +67,24 @@ export default fp(async function errorHandlerPlugin(app: FastifyInstance) {
         body.details = err.details;
       }
       return reply.code(err.status).send(body);
+    }
+
+    // A timeout or transport failure that escaped a handler still means the
+    // upstream is unavailable, not that this process has a bug — answer 502
+    // with the safe envelope rather than the generic 500, and never echo the
+    // upstream's own error text.
+    if (err instanceof TimeoutError || err instanceof TransportError) {
+      const converted = toProviderError(err, {
+        provider: "upstream",
+        operation: "route",
+        fallbackMessage: "The upstream service is unavailable",
+      });
+      return reply.code(converted.status).send({
+        code: converted.code,
+        error: converted.code,
+        message: converted.message,
+        requestId,
+      });
     }
 
     // Size and shape limits rejected by Fastify or @fastify/multipart before a
